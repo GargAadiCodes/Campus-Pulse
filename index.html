@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Pulse | Weekly Events & Schedule Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f8;--ink:#0f2438;--muted:#5b6b7b;--line:#d5dee8;--card:#fff;--accent:#0b6e4f;--accent-d:#095a41;--hi:#ffd23f;--warn:#c2410c;--warn-bg:#ffedd5}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Bricolage Grotesque',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding-bottom:48px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+header{background:var(--ink);color:#fff;padding:32px 20px 28px}
+.wrap{max-width:1120px;margin:0 auto}
+header h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:800;letter-spacing:-.03em;line-height:1}
+header h1 span{background:var(--hi);color:var(--ink);padding:0 .15em;border-radius:6px}
+header p{margin-top:10px;color:#b9c7d6;max-width:48ch}
+main{max-width:1120px;margin:20px auto;padding:0 16px;display:grid;gap:20px}
+@media(min-width:900px){main{grid-template-columns:1.5fr 1fr;align-items:start}aside{position:sticky;top:16px}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+h2{font-size:1.15rem;font-weight:700;margin-bottom:14px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.day{border:1px solid var(--line);background:#f7f9fc;border-radius:8px;padding:8px 0;text-align:center;cursor:pointer;font-weight:600;font-size:.85rem}
+.day small{display:block;font-weight:500;color:var(--muted);font-size:.7rem}
+.day[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.day[aria-pressed=true] small{color:#b9c7d6}
+.dots{height:8px;display:flex;justify-content:center;gap:2px;margin-top:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.day[aria-pressed=true] .dots i{background:var(--hi)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.controls input,.controls select{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#fff;font-size:.95rem}
+.controls input{flex:1;min-width:180px}
+.list{display:grid;gap:10px}
+.ev{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
+.ev.going{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
+.time{font-weight:800;font-size:1.05rem;line-height:1.15}
+.time small{display:block;font-weight:500;color:var(--muted);font-size:.75rem}
+.ev h3{font-size:1rem;font-weight:700}
+.meta{font-size:.82rem;color:var(--muted)}
+.tag{display:inline-block;background:#e4efe9;color:var(--accent-d);font-weight:600;font-size:.72rem;padding:1px 8px;border-radius:99px;margin-right:6px}
+.btn{border:0;background:var(--accent);color:#fff;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.85rem}
+.btn:hover{background:var(--accent-d)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:#f0f4f8}
+.btn.on{background:var(--ink)}
+.empty{color:var(--muted);font-size:.92rem;padding:8px 0}
+.sday{font-weight:700;font-size:.9rem;margin:14px 0 6px}
+.sitem{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 11px;border-radius:8px;background:#f3f7fa;margin-bottom:6px;font-size:.9rem}
+.sitem.clash{background:var(--warn-bg)}
+.sitem b{display:block}
+.sitem span{font-size:.78rem;color:var(--muted)}
+.clashmsg{color:var(--warn);font-weight:600;font-size:.78rem}
+.x{border:0;background:none;cursor:pointer;font-size:1.1rem;color:var(--muted)}
+.summary{display:flex;justify-content:space-between;margin:14px 0 12px;font-size:.92rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:36px}
+@media(max-width:520px){.ev{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<h1>Campus <span>Pulse</span></h1>
+<p>See what's happening on campus this week, pick what you'll attend, and spot schedule clashes before they happen.</p>
+</div></header>
+
+<main>
+<section class="panel" aria-labelledby="evh">
+<h2 id="evh">This week's events</h2>
+<div class="week" id="week"></div>
+<div class="controls">
+<input type="search" id="q" placeholder="Search events or venues" aria-label="Search events" oninput="renderEvents()">
+<select id="cat" aria-label="Filter by category" onchange="renderEvents()"></select>
+</div>
+<div class="list" id="events"></div>
+</section>
+
+<aside class="panel" aria-labelledby="sh">
+<h2 id="sh">My schedule</h2>
+<div id="sched"></div>
+<div class="summary"><span>Events: <b id="cnt">0</b></span><span>Clashes: <b id="clashes">0</b></span></div>
+<div class="actions">
+<button class="btn" onclick="copySchedule()">Copy schedule</button>
+<button class="btn ghost" onclick="clearAll()">Clear all</button>
+</div>
+</aside>
+</main>
+
+<footer>Campus Pulse &copy; 2026. Sample events. Your schedule is saved in this browser only.</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const EVENTS=[
+{id:1,title:"Intro to Machine Learning Talk",venue:"Science Hall 101",cat:"Talks",day:0,s:10,e:11.5},
+{id:2,title:"Morning Yoga on the Lawn",venue:"Central Lawn",cat:"Wellness",day:0,s:7.5,e:8.5},
+{id:3,title:"Robotics Club Build Night",venue:"Engineering Lab B",cat:"Clubs",day:1,s:18,e:20},
+{id:4,title:"Resume Review Workshop",venue:"Career Centre",cat:"Workshops",day:1,s:14,e:15.5},
+{id:5,title:"Open Mic Evening",venue:"Student Union Cafe",cat:"Music",day:2,s:19,e:21},
+{id:6,title:"Startup Pitch Practice",venue:"Innovation Hub",cat:"Workshops",day:2,s:18.5,e:20},
+{id:7,title:"Inter-Department Football",venue:"North Field",cat:"Sports",day:3,s:16,e:18},
+{id:8,title:"Guest Lecture: Climate & Cities",venue:"Main Auditorium",cat:"Talks",day:3,s:11,e:12.5},
+{id:9,title:"Photography Walk",venue:"Library Steps",cat:"Clubs",day:4,s:15,e:17},
+{id:10,title:"Friday Film Screening",venue:"Media Room",cat:"Music",day:4,s:19,e:21.5},
+{id:11,title:"Charity 5K Run",venue:"Campus Loop",cat:"Sports",day:5,s:7,e:9},
+{id:12,title:"Hackathon Kickoff",venue:"Innovation Hub",cat:"Workshops",day:5,s:10,e:13},
+{id:13,title:"Sunday Board Games",venue:"Student Union Cafe",cat:"Clubs",day:6,s:16,e:19},
+{id:14,title:"Acoustic Garden Session",venue:"Botanical Garden",cat:"Music",day:6,s:17,e:18.5}
+];
+const KEY='campus_pulse_going';
+let going=load();let selDay=null;
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(going))}catch(e){}}
+function fmt(h){const H=Math.floor(h),m=Math.round((h-H)*60),ap=H>=12?'PM':'AM',h12=((H+11)%12)+1;return h12+':'+String(m).padStart(2,'0')+' '+ap}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),1800)}
+function overlap(a,b){return a.day===b.day&&a.s<b.e&&b.s<a.e}
+function clashIds(){const mine=EVENTS.filter(e=>going.includes(e.id));const ids=new Set();
+ mine.forEach((a,i)=>mine.slice(i+1).forEach(b=>{if(overlap(a,b)){ids.add(a.id);ids.add(b.id)}}));return ids}
+
+function init(){
+ const cats=['All categories',...new Set(EVENTS.map(e=>e.cat))];
+ document.getElementById('cat').innerHTML=cats.map(c=>`<option>${c}</option>`).join('');
+ renderAll();
+}
+function renderAll(){renderWeek();renderEvents();renderSchedule()}
+
+function renderWeek(){
+ document.getElementById('week').innerHTML=DAYS.map((d,i)=>{
+  const n=EVENTS.filter(e=>e.day===i&&going.includes(e.id)).length;
+  return `<button class="day" aria-pressed="${selDay===i}" onclick="pickDay(${i})">${d}<small>${EVENTS.filter(e=>e.day===i).length} events</small><div class="dots">${'<i></i>'.repeat(Math.min(n,4))}</div></button>`}).join('');
+}
+function pickDay(i){selDay=selDay===i?null:i;renderWeek();renderEvents()}
+
+function renderEvents(){
+ const q=document.getElementById('q').value.toLowerCase();
+ const cat=document.getElementById('cat').value;
+ const list=EVENTS.filter(e=>(selDay===null||e.day===selDay)&&(cat==='All categories'||e.cat===cat)&&(e.title+e.venue).toLowerCase().includes(q))
+  .sort((a,b)=>a.day-b.day||a.s-b.s);
+ const box=document.getElementById('events');
+ if(!list.length){box.innerHTML='<p class="empty">No events match. Clear the search, or pick another day or category.</p>';return}
+ box.innerHTML=list.map(e=>{const on=going.includes(e.id);
+  return `<article class="ev ${on?'going':''}">
+   <div class="time">${DAYS[e.day]}<small>${fmt(e.s)}</small></div>
+   <div><h3>${e.title}</h3><div class="meta"><span class="tag">${e.cat}</span>${e.venue} · until ${fmt(e.e)}</div></div>
+   <button class="btn ${on?'on':''}" aria-pressed="${on}" onclick="toggle(${e.id})">${on?'Going':'Add'}</button>
+  </article>`}).join('');
+}
+
+function toggle(id){
+ const e=EVENTS.find(x=>x.id===id);
+ if(going.includes(id)){going=going.filter(x=>x!==id);toast('Removed from your schedule')}
+ else{going.push(id);const clash=EVENTS.some(o=>going.includes(o.id)&&o.id!==id&&overlap(o,e));toast(clash?'Added. This clashes with another event':'Added to your schedule')}
+ save();renderAll();
+}
+
+function renderSchedule(){
+ const mine=EVENTS.filter(e=>going.includes(e.id)).sort((a,b)=>a.day-b.day||a.s-b.s);
+ const clashes=clashIds();
+ document.getElementById('cnt').textContent=mine.length;
+ document.getElementById('clashes').textContent=clashes.size;
+ const box=document.getElementById('sched');
+ if(!mine.length){box.innerHTML='<p class="empty">Nothing planned yet. Press Add on any event to build your week.</p>';return}
+ let html='';
+ DAYS.forEach((d,i)=>{const evs=mine.filter(e=>e.day===i);if(!evs.length)return;
+  html+=`<div class="sday">${d}</div>`+evs.map(e=>`<div class="sitem ${clashes.has(e.id)?'clash':''}">
+   <div><b>${e.title}</b><span>${fmt(e.s)} to ${fmt(e.e)} · ${e.venue}</span>${clashes.has(e.id)?'<div class="clashmsg">Overlaps another event</div>':''}</div>
+   <button class="x" aria-label="Remove ${e.title}" onclick="toggle(${e.id})">&times;</button></div>`).join('')});
+ box.innerHTML=html;
+}
+
+function clearAll(){going=[];save();renderAll();toast('Schedule cleared')}
+function copySchedule(){
+ const mine=EVENTS.filter(e=>going.includes(e.id)).sort((a,b)=>a.day-b.day||a.s-b.s);
+ if(!mine.length){toast('Add an event first');return}
+ const text='My campus week:\n'+mine.map(e=>`${DAYS[e.day]} ${fmt(e.s)}-${fmt(e.e)}  ${e.title} (${e.venue})`).join('\n');
+ (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast('Schedule copied')).catch(()=>toast('Copy is not supported here'));
+}
+init();
+</script>
+</body>
+</html>
